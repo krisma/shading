@@ -38,7 +38,8 @@ float spv;
 float sp;
 vector<float> plxyz;
 vector<float> plrgb;
-
+vector<float> dlxyz;
+vector<float> dlrgb;
 
 void triLoad(vector<float>& dest, float r, float g, float b) {
     dest.resize(3);
