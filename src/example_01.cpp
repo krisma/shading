@@ -29,13 +29,73 @@ int Height_global = 400;
 
 inline float sqr(float x) { return x*x; }
 
+// Optional params
+vector<float> ka;
+vector<float> kd;
+vector<float> ks;
+float spu;
+float spv;
+float sp;
+vector<float> plxyz;
+vector<float> plrgb;
 
+
+void triLoad(vector<float>& dest, float r, float g, float b) {
+    dest.resize(3);
+    dest[0] = r;
+    dest[1] = g;
+    dest[2] = b;
+}
+constexpr unsigned int str2int(const char* str, int h = 0)
+{
+    return !str[h] ? 5381 : (str2int(str, h+1) * 33) ^ str[h];
+}
+void parseArgs(int argc, char *argv[]) {
+    for (int i = 1; i < argc; i++) {
+        switch (str2int(argv[i])) {
+            case str2int("-ka"):
+                triLoad(ka, strtof(argv[i + 1], nullptr), strtof(argv[i + 2], nullptr), strtof(argv[i + 3], nullptr));
+                i += 3;
+                break;
+            case str2int("-kd"):
+                triLoad(kd, strtof(argv[i + 1], nullptr), strtof(argv[i + 2], nullptr), strtof(argv[i + 3], nullptr));
+                i += 3;
+                break;
+            case str2int("-ks"):
+                triLoad(kd, strtof(argv[i + 1], nullptr), strtof(argv[i + 2], nullptr), strtof(argv[i + 3], nullptr));
+                i += 3;
+                break;
+            case str2int("-spu"):
+                spu = strtof(argv[i + 1], nullptr);
+                i += 1;
+                break;
+            case str2int("-spv"):
+                spv = strtof(argv[i + 1], nullptr);
+                i += 1;
+                break;
+            case str2int("-sp"):
+                sp = strtof(argv[i + 1], nullptr);
+                break;
+            case str2int("-pl"):
+                triLoad(plxyz, strtof(argv[i + 1], nullptr), strtof(argv[i + 2], nullptr), strtof(argv[i + 3], nullptr));
+                triLoad(plrgb, strtof(argv[i + 4], nullptr), strtof(argv[i + 5], nullptr), strtof(argv[i + 6], nullptr));
+                i += 6;
+                break;
+            case str2int("-dl"):
+                triLoad(dlxyz, strtof(argv[i + 1], nullptr), strtof(argv[i + 2], nullptr), strtof(argv[i + 3], nullptr));
+                triLoad(dlrgb, strtof(argv[i + 4], nullptr), strtof(argv[i + 5], nullptr), strtof(argv[i + 6], nullptr));
+                i += 6;
+                break;          
+        }
+    }
+}
 //****************************************************
 // Simple init function
 //****************************************************
 void initializeRendering()
 {
     glfwInit();
+
 }
 
 
@@ -171,6 +231,12 @@ int main(int argc, char *argv[]) {
     //This initializes glfw
     initializeRendering();
     
+    // Parse args
+    parseArgs(argc, argv);
+
+    // Test parsing
+    // for (auto k : ka) if (k != 10) return 1;
+
     GLFWwindow* window = glfwCreateWindow( Width_global, Height_global, "CS184", NULL, NULL );
     if ( !window )
     {
