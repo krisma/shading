@@ -30,22 +30,54 @@ int Height_global = 400;
 inline float sqr(float x) { return x*x; }
 
 // Optional params
-vector<float> ka;
-vector<float> kd;
-vector<float> ks;
-float spu;
-float spv;
-float sp;
-vector<float> plxyz;
-vector<float> plrgb;
-vector<float> dlxyz;
-vector<float> dlrgb;
+vector<float> ka(3);
+vector<float> kd(3);
+vector<float> ks(3);
+float spu = 1;
+float spv = 1;
+float sp = 1;
+vector<vector<float>> plxyz(5, vector<float>(3));
+vector<vector<float>> plrgb(5, vector<float>(3));
+vector<vector<float>> dlxyz(5, vector<float>(3));
+vector<vector<float>> dlrgb(5, vector<float>(3));
+int plCount = 0;
+int dlCount = 0;
 
 void triLoad(vector<float>& dest, float r, float g, float b) {
-    dest.resize(3);
     dest[0] = r;
     dest[1] = g;
     dest[2] = b;
+}
+void normalizeVec(vector<float>& vec) {
+    float l = sqrt(pow(vec[0], 2) + pow(vec[1], 2) + pow(vec[2], 2));
+    vec[0] /= l;
+    vec[1] /= l;
+    vec[2] /= l;
+}
+void negateVec(vector<float>& vec) {
+    vec[0] = -vec[0];
+    vec[1] = -vec[1];
+    vec[2] = -vec[2];
+}
+void subtractVec(vector<float>& minuend, vector<float>& subtrahend) {
+    for (int i = 0; i < minuend.size(); i++) {
+        minuend[i] -= subtrahend[i];
+    }
+}
+void scaleVec(vector<float>& multiplier, float multiplicand) {
+    for (int i = 0; i < multiplier.size(); i++) {
+        multiplier[i] *= multiplicand;
+    }
+}
+vector<float> multiplyVec(vector<float>& multiplier, vector<float>& multiplicand) {
+    vector<float> rtn(multiplier.size());
+    for (int i = 0; i < multiplier.size(); i++) {
+        rtn[i] = multiplier[i] * multiplicand[i];
+    }
+    return rtn;
+}
+float dotProduct(vector<float>& v1, vector<float>& v2) {
+    return v1[0] * v2[0] + v1[1] * v2[1] + v1[2] * v2[2];
 }
 constexpr unsigned int str2int(const char* str, int h = 0)
 {
@@ -78,13 +110,15 @@ void parseArgs(int argc, char *argv[]) {
                 sp = strtof(argv[i + 1], nullptr);
                 break;
             case str2int("-pl"):
-                triLoad(plxyz, strtof(argv[i + 1], nullptr), strtof(argv[i + 2], nullptr), strtof(argv[i + 3], nullptr));
-                triLoad(plrgb, strtof(argv[i + 4], nullptr), strtof(argv[i + 5], nullptr), strtof(argv[i + 6], nullptr));
+                triLoad(plxyz[plCount], strtof(argv[i + 1], nullptr), strtof(argv[i + 2], nullptr), strtof(argv[i + 3], nullptr));
+                triLoad(plrgb[plCount], strtof(argv[i + 4], nullptr), strtof(argv[i + 5], nullptr), strtof(argv[i + 6], nullptr));
+                plCount++;
                 i += 6;
                 break;
             case str2int("-dl"):
-                triLoad(dlxyz, strtof(argv[i + 1], nullptr), strtof(argv[i + 2], nullptr), strtof(argv[i + 3], nullptr));
-                triLoad(dlrgb, strtof(argv[i + 4], nullptr), strtof(argv[i + 5], nullptr), strtof(argv[i + 6], nullptr));
+                triLoad(dlxyz[dlCount], strtof(argv[i + 1], nullptr), strtof(argv[i + 2], nullptr), strtof(argv[i + 3], nullptr));
+                triLoad(dlrgb[dlCount], strtof(argv[i + 4], nullptr), strtof(argv[i + 5], nullptr), strtof(argv[i + 6], nullptr));
+                dlCount++;
                 i += 6;
                 break;          
         }
@@ -169,7 +203,76 @@ void drawCircle(float centerX, float centerY, float radius) {
                 // This is the front-facing Z coordinate
                 float z = sqrt(radius*radius-dist*dist);
 
-                setPixel(i, j, 1.0, 0.0, 0.0);
+
+                vector<float> colorVec {0, 0, 0};
+                vector<float> positionVec {x, y, z};
+                normalizeVec(positionVec);
+
+
+
+                for (int i = 0; i < plCount; i++) {
+                    // Deep copy
+                    vector<float> plxyzVec(plxyz[i]);
+                    subtractVec(plxyzVec, positionVec);
+                    normalizeVec(plxyzVec);
+                    float diff = max(0.0f, dotProduct(plxyzVec, positionVec));
+
+                    // Deep copy
+                    vector<float> positionVecCpy(positionVec);
+                    scaleVec(positionVecCpy, 2.0);
+                    subtractVec(positionVecCpy, positionVec);
+                    normalizeVec(positionVecCpy);
+
+
+                    vector<float> initVec {0, 0, 0};
+                    // Deep copy
+                    vector<float> plrgbVec(plrgb[i]);
+                    vector<float> ambient = multiplyVec(plrgbVec, ka);
+                    
+                    vector<float> diffuse = multiplyVec(plrgbVec, kd);
+                    scaleVec(diffuse, diff);
+                    vector<float> specular = multiplyVec(plrgbVec, ks);
+                    scaleVec(specular, pow(max(0.0f, dotProduct(positionVecCpy, initVec)), sp));
+
+                    for (int i = 0; i < colorVec.size(); i++) {
+                        colorVec[i] += ambient[i] + diffuse[i] + specular[i];
+                        // cout << colorVec[i] << endl;
+                    }
+                }
+
+                for (int i = 0; i < dlCount; i++) {
+                    // Deep copy
+                    vector<float> dlxyzVec(dlxyz[i]);
+
+                    negateVec(dlxyzVec);
+                    normalizeVec(dlxyzVec);
+                    float diff = max(0.0f, dotProduct(dlxyzVec, positionVec));
+
+                    // Deep copy
+                    vector<float> positionVecCpy(positionVec);
+                    scaleVec(positionVecCpy, 2.0);
+                    subtractVec(positionVecCpy, positionVec);
+                    normalizeVec(positionVecCpy);
+
+
+                    vector<float> initVec {0, 0, 0};
+                    // Deep copy
+                    vector<float> dlrgbVec(dlrgb[i]);
+                    vector<float> ambient = multiplyVec(dlrgbVec, ka);
+                    
+                    vector<float> diffuse = multiplyVec(dlrgbVec, kd);
+                    scaleVec(diffuse, diff);
+                    vector<float> specular = multiplyVec(dlrgbVec, ks);
+                    scaleVec(specular, pow(max(0.0f, dotProduct(positionVecCpy, initVec)), sp));
+
+                    for (int i = 0; i < colorVec.size(); i++) {
+                        colorVec[i] += ambient[i] + diffuse[i] + specular[i];
+                        // cout << colorVec[i] << endl;
+                    }
+                }
+                // setPixel(i, j, 1.0, 1.0, 0.0);
+
+                setPixel(i, j, colorVec[0], colorVec[1], colorVec[2]);
 
                 // This is amusing, but it assumes negative color values are treated reasonably.
                 // setPixel(i,j, x/radius, y/radius, z/radius );
@@ -178,6 +281,9 @@ void drawCircle(float centerX, float centerY, float radius) {
                 // if (dist > (radius-1.0)) {
                 //     setPixel(i, j, 1.0, 1.0, 0.0);
                 // }
+
+
+
             }
         }
     }
@@ -235,8 +341,8 @@ int main(int argc, char *argv[]) {
     // Parse args
     parseArgs(argc, argv);
 
-    // Test parsing
-    // for (auto k : ka) if (k != 10) return 1;
+
+
 
     GLFWwindow* window = glfwCreateWindow( Width_global, Height_global, "CS184", NULL, NULL );
     if ( !window )
