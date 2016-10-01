@@ -95,7 +95,7 @@ void parseArgs(int argc, char *argv[]) {
                 i += 3;
                 break;
             case str2int("-ks"):
-                triLoad(kd, strtof(argv[i + 1], nullptr), strtof(argv[i + 2], nullptr), strtof(argv[i + 3], nullptr));
+                triLoad(ks, strtof(argv[i + 1], nullptr), strtof(argv[i + 2], nullptr), strtof(argv[i + 3], nullptr));
                 i += 3;
                 break;
             case str2int("-spu"):
@@ -211,28 +211,31 @@ void drawCircle(float centerX, float centerY, float radius) {
 
 
                 for (int i = 0; i < plCount; i++) {
+
                     // Deep copy
                     vector<float> plxyzVec(plxyz[i]);
                     subtractVec(plxyzVec, positionVec);
                     normalizeVec(plxyzVec);
-                    float diff = max(0.0f, dotProduct(plxyzVec, positionVec));
+                    float dDiff = max(0.0f, dotProduct(plxyzVec, positionVec));
 
                     // Deep copy
                     vector<float> positionVecCpy(positionVec);
-                    scaleVec(positionVecCpy, 2.0);
-                    subtractVec(positionVecCpy, positionVec);
+                    scaleVec(positionVecCpy, 2.0 * dotProduct(plxyzVec, positionVec));
+                    subtractVec(positionVecCpy, plxyzVec);
                     normalizeVec(positionVecCpy);
 
 
-                    vector<float> initVec {0, 0, 0};
+                    vector<float> initVec {0, 0, 1};
                     // Deep copy
                     vector<float> plrgbVec(plrgb[i]);
                     vector<float> ambient = multiplyVec(plrgbVec, ka);
                     
                     vector<float> diffuse = multiplyVec(plrgbVec, kd);
-                    scaleVec(diffuse, diff);
+                    scaleVec(diffuse, dDiff);
+
+                    float dSpec = pow(max(0.0f, dotProduct(positionVecCpy, initVec)), sp);
                     vector<float> specular = multiplyVec(plrgbVec, ks);
-                    scaleVec(specular, pow(max(0.0f, dotProduct(positionVecCpy, initVec)), sp));
+                    scaleVec(specular, dSpec);
 
                     for (int i = 0; i < colorVec.size(); i++) {
                         colorVec[i] += ambient[i] + diffuse[i] + specular[i];
@@ -250,24 +253,25 @@ void drawCircle(float centerX, float centerY, float radius) {
 
                     // Deep copy
                     vector<float> positionVecCpy(positionVec);
-                    scaleVec(positionVecCpy, 2.0);
-                    subtractVec(positionVecCpy, positionVec);
+                    scaleVec(positionVecCpy, 2.0 * dotProduct(dlxyzVec, positionVec));
+                    subtractVec(positionVecCpy, dlxyzVec);
                     normalizeVec(positionVecCpy);
 
 
-                    vector<float> initVec {0, 0, 0};
+                    vector<float> initVec {0, 0, 1};
                     // Deep copy
                     vector<float> dlrgbVec(dlrgb[i]);
                     vector<float> ambient = multiplyVec(dlrgbVec, ka);
                     
                     vector<float> diffuse = multiplyVec(dlrgbVec, kd);
                     scaleVec(diffuse, diff);
+
                     vector<float> specular = multiplyVec(dlrgbVec, ks);
-                    scaleVec(specular, pow(max(0.0f, dotProduct(positionVecCpy, initVec)), sp));
+                    float dSpec = pow(max(0.0f, dotProduct(positionVecCpy, initVec)), sp);
+                    scaleVec(specular, dSpec);
 
                     for (int i = 0; i < colorVec.size(); i++) {
                         colorVec[i] += ambient[i] + diffuse[i] + specular[i];
-                        // cout << colorVec[i] << endl;
                     }
                 }
                 // setPixel(i, j, 1.0, 1.0, 0.0);
