@@ -59,6 +59,11 @@ void negateVec(vector<float>& vec) {
     vec[1] = -vec[1];
     vec[2] = -vec[2];
 }
+void addVec(vector<float>& a, vector<float>& b) {
+    for (int i = 0; i < a.size(); i++) {
+        a[i] += b[i];
+    }
+}
 void subtractVec(vector<float>& minuend, vector<float>& subtrahend) {
     for (int i = 0; i < minuend.size(); i++) {
         minuend[i] -= subtrahend[i];
@@ -75,6 +80,9 @@ vector<float> multiplyVec(vector<float>& multiplier, vector<float>& multiplicand
         rtn[i] = multiplier[i] * multiplicand[i];
     }
     return rtn;
+}
+vector<float> crossProduct(vector<float>& a, vector<float>& b) {
+    return {a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]};
 }
 float dotProduct(vector<float>& v1, vector<float>& v2) {
     return v1[0] * v2[0] + v1[1] * v2[1] + v1[2] * v2[2];
@@ -108,6 +116,8 @@ void parseArgs(int argc, char *argv[]) {
                 break;
             case str2int("-sp"):
                 sp = strtof(argv[i + 1], nullptr);
+                spu = sp;
+                spv = sp;
                 break;
             case str2int("-pl"):
                 triLoad(plxyz[plCount], strtof(argv[i + 1], nullptr), strtof(argv[i + 2], nullptr), strtof(argv[i + 3], nullptr));
@@ -233,14 +243,52 @@ void drawCircle(float centerX, float centerY, float radius) {
                     vector<float> diffuse = multiplyVec(plrgbVec, kd);
                     scaleVec(diffuse, dDiff);
 
-                    float dSpec = pow(max(0.0f, dotProduct(positionVecCpy, initVec)), sp);
-                    vector<float> specular = multiplyVec(plrgbVec, ks);
-                    scaleVec(specular, dSpec);
+                    if (spu == spv) {
+                        float dSpec = pow(max(0.0f, dotProduct(positionVecCpy, initVec)), sp);
+                        vector<float> specular = multiplyVec(plrgbVec, ks);
+                        scaleVec(specular, dSpec);
 
-                    for (int i = 0; i < colorVec.size(); i++) {
-                        colorVec[i] += ambient[i] + diffuse[i] + specular[i];
-                        // cout << colorVec[i] << endl;
+                        for (int i = 0; i < colorVec.size(); i++) {
+                            colorVec[i] += ambient[i] + diffuse[i] + specular[i];
+                            // cout << colorVec[i] << endl;
+                        }
+                    } else {
+                        vector<float> half = {0, 0, 0};
+                        addVec(half, plxyzVec);
+                        addVec(half, initVec);
+                        normalizeVec(half);
+
+                        vector<float> u;
+                        vector<float> v {0, 1, 0};
+                        
+                        vector<float> tempy {0, 1, 0};
+                        vector<float> positionVecCpy1(positionVec);
+                        scaleVec(positionVecCpy1, dotProduct(positionVec, tempy));
+                        subtractVec(v, positionVecCpy1);
+                        normalizeVec(v);
+                        u = crossProduct(v, positionVec);
+                        normalizeVec(u);
+
+
+                        float fac0 = sqrt((spu + 1) * (spv + 1)) / (8 * PI);
+                        float base = dotProduct(positionVec, half);
+                        float pwr = spu * (pow(dotProduct(half, u), 2)) + spv * (pow(dotProduct(half, v), 2));
+                        pwr /= 1 - pow(dotProduct(half, positionVec), 2);
+                        base = pow(base, pwr);
+                        base /= dotProduct(half, initVec) * max(dotProduct(positionVec, initVec), dotProduct(positionVec, plxyzVec));
+                        base *= fac0;
+
+                        base *= sp + (1 - sp) * pow((1- dotProduct(half, initVec)), 5);
+
+                        vector<float> specular = {base, base, base};
+                        specular = multiplyVec(plrgbVec, specular);
+                        for (int i = 0; i < colorVec.size(); i++) {
+                            colorVec[i] += ambient[i] + diffuse[i] + specular[i];
+                            // cout << colorVec[i] << endl;
+                        }
+
                     }
+
                 }
 
                 for (int i = 0; i < dlCount; i++) {
@@ -266,12 +314,49 @@ void drawCircle(float centerX, float centerY, float radius) {
                     vector<float> diffuse = multiplyVec(dlrgbVec, kd);
                     scaleVec(diffuse, diff);
 
-                    vector<float> specular = multiplyVec(dlrgbVec, ks);
-                    float dSpec = pow(max(0.0f, dotProduct(positionVecCpy, initVec)), sp);
-                    scaleVec(specular, dSpec);
+                    if (spu == spv) {                   
+                        vector<float> specular = multiplyVec(dlrgbVec, ks);
+                        float dSpec = pow(max(0.0f, dotProduct(positionVecCpy, initVec)), sp);
+                        scaleVec(specular, dSpec);
 
-                    for (int i = 0; i < colorVec.size(); i++) {
-                        colorVec[i] += ambient[i] + diffuse[i] + specular[i];
+                        for (int i = 0; i < colorVec.size(); i++) {
+                            colorVec[i] += ambient[i] + diffuse[i] + specular[i];
+                        }
+                    } else {
+                        vector<float> half = {0, 0, 0};
+                        addVec(half, dlxyzVec);
+                        addVec(half, initVec);
+                        normalizeVec(half);
+
+                        vector<float> u;
+                        vector<float> v {0, 1, 0};
+                        
+                        vector<float> tempy {0, 1, 0};
+                        vector<float> positionVecCpy1(positionVec);
+                        scaleVec(positionVecCpy1, dotProduct(positionVec, tempy));
+                        subtractVec(v, positionVecCpy1);
+                        normalizeVec(v);
+                        u = crossProduct(v, positionVec);
+                        normalizeVec(u);
+
+
+                        float fac0 = sqrt((spu + 1) * (spv + 1)) / (8 * PI);
+                        float base = dotProduct(positionVec, half);
+                        float pwr = spu * (pow(dotProduct(half, u), 2)) + spv * (pow(dotProduct(half, v), 2));
+                        pwr /= 1 - pow(dotProduct(half, positionVec), 2);
+                        base = pow(base, pwr);
+                        base /= dotProduct(half, initVec) * max(dotProduct(positionVec, initVec), dotProduct(positionVec, dlxyzVec));
+                        base *= fac0;
+
+                        base *= sp + (1 - sp) * pow((1- dotProduct(half, initVec)), 5);
+
+                        vector<float> specular = {base, base, base};
+                        specular = multiplyVec(dlrgbVec, specular);
+                        for (int i = 0; i < colorVec.size(); i++) {
+                            colorVec[i] += ambient[i] + diffuse[i] + specular[i];
+                            // cout << colorVec[i] << endl;
+                        }
+
                     }
                 }
                 // setPixel(i, j, 1.0, 1.0, 0.0);
