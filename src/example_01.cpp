@@ -339,8 +339,7 @@ void drawCircle(float centerX, float centerY, float radius) {
                         normalizeVec(v);
                         u = crossProduct(v, positionVec);
                         normalizeVec(u);
-                        cout << u[0] << endl;cout << u[1] << endl;cout << u[2] << endl;
-                        cout << v[0] << endl;cout << v[1] << endl;cout << v[2] << endl;
+
                         float fac0 = sqrt((spu + 1) * (spv + 1)) / (8 * PI);
                         float base = dotProduct(positionVec, half);
                         float pwr = spu * (pow(dotProduct(half, u), 2)) + spv * (pow(dotProduct(half, v), 2));
